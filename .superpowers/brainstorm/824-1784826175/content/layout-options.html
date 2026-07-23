@@ -1,0 +1,86 @@
+<h2>Where should annotations live, and where does the Brown Bear button go?</h2>
+<p class="subtitle">Two layout directions for using the left/right margins around a Claude response. Click the one that feels right (or click both and tell me what you'd mix).</p>
+
+<style>
+  .chat-mock { display:grid; grid-template-columns: 90px 1fr 90px; gap:10px; align-items:start; }
+  .chat-mock .margin { min-height: 260px; position:relative; }
+  .chat-mock .bubble { background: var(--card-bg,#1c1c1c); border-radius:10px; padding:14px 16px; font-size:13px; line-height:1.55; position:relative; }
+  .bear-btn { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:#8a5a2f; color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .hl { border-radius:3px; padding:0 2px; }
+  .hl-a { background: rgba(255,196,0,.28); }
+  .hl-b { background: rgba(90,160,255,.28); }
+  .hl-c { background: rgba(120,220,140,.28); }
+  .note-chip { font-size:10.5px; line-height:1.3; padding:5px 7px; border-radius:6px; margin-bottom:10px; opacity:.9; }
+  .note-a { background: rgba(255,196,0,.15); border-left:3px solid #ffc400; }
+  .note-b { background: rgba(90,160,255,.15); border-left:3px solid #5aa0ff; }
+  .note-c { background: rgba(120,220,140,.15); border-left:3px solid #78dc8c; }
+  .diagram-box { font-size:10px; border:1px dashed #666; border-radius:8px; padding:8px; text-align:center; opacity:.85; }
+  .conn-line { position:absolute; height:1px; background:#555; opacity:.5; }
+</style>
+
+<div class="mockup">
+  <div class="mockup-header">Option A — Margin notes on both sides, connected to highlights</div>
+  <div class="mockup-body">
+    <div class="chat-mock">
+      <div class="margin">
+        <div class="note-chip note-a">Cache = reused prefix, cuts cost</div>
+        <div class="note-chip note-b" style="margin-top:70px">This is the part that breaks under load</div>
+      </div>
+      <div class="bubble">
+        <div class="bear-btn">🐻</div>
+        <strong>Architecture Overview</strong><br><br>
+        The ingestion service reads from the queue and writes to
+        <span class="hl hl-a">a prompt cache layer</span> before calling the model.
+        Under high concurrency, <span class="hl hl-b">the retry logic re-enqueues failed
+        batches</span> without backoff, which can cause a thundering herd against
+        the downstream API. The response is then
+        <span class="hl hl-c">streamed back through the gateway</span> to the client.
+      </div>
+      <div class="margin">
+        <div class="diagram-box">📊 mini diagram:<br>queue → cache → model → gateway</div>
+        <div class="note-chip note-c" style="margin-top:90px">Streaming = user sees tokens live</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:22px">
+  <div class="mockup-header">Option B — Right margin only, stacked annotation cards</div>
+  <div class="mockup-body">
+    <div class="chat-mock" style="grid-template-columns: 1fr 160px;">
+      <div class="bubble">
+        <div class="bear-btn">🐻</div>
+        <strong>Architecture Overview</strong><br><br>
+        The ingestion service reads from the queue and writes to
+        <span class="hl hl-a">a prompt cache layer</span> before calling the model.
+        Under high concurrency, <span class="hl hl-b">the retry logic re-enqueues failed
+        batches</span> without backoff, which can cause a thundering herd against
+        the downstream API. The response is then
+        <span class="hl hl-c">streamed back through the gateway</span> to the client.
+      </div>
+      <div class="margin">
+        <div class="note-chip note-a">① Cache = reused prefix, cuts cost</div>
+        <div class="note-chip note-b">② Risk: no backoff → herd effect</div>
+        <div class="note-chip note-c">③ Streaming = tokens shown live</div>
+        <div class="diagram-box" style="margin-top:14px">📊 queue → cache →<br>model → gateway</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Both margins + connectors</h3>
+      <p>More annotation space, feels closer to book marginalia, but uses both sides so the response column gets narrower</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Right margin only, stacked</h3>
+      <p>Keeps left side clean, numbered markers tie highlights to notes, diagram slots in at the bottom of the stack</p>
+    </div>
+  </div>
+</div>
