@@ -13,6 +13,22 @@ import type { Rect } from '../annotate/margins'
 
 const MARGIN_WIDTH = 160
 
+// Overlay SVGs are appended directly into Claude.ai's own response elements
+// (createOverlaySvg's `container`), not inside our shadow root, so a theme
+// change can't be picked up by re-rendering the React tree alone. Ink colors
+// are set once here as CSS custom properties on <html>, and drawAnnotation
+// references them via var(...) instead of baking in a literal color — that
+// way every already-drawn annotation repaints live when the palette changes.
+function applyPaletteVars(mode: ReturnType<typeof readThemeMode>) {
+  const palette = paletteFor(mode)
+  const root = document.documentElement.style
+  root.setProperty('--brown-ink', palette.ink)
+  root.setProperty('--brown-ink-blue', palette.inkBlue)
+  root.setProperty('--brown-ink-red', palette.inkRed)
+  root.setProperty('--brown-ink-green', palette.inkGreen)
+  root.setProperty('--brown-note-bg', palette.noteBg)
+}
+
 function marginZonesFor(container: HTMLElement): { left: Rect; right: Rect } {
   const width = container.clientWidth
   const height = container.scrollHeight
@@ -23,13 +39,12 @@ function marginZonesFor(container: HTMLElement): { left: Rect; right: Rect } {
 }
 
 function drawAnnotation(svg: SVGSVGElement, annotation: RenderableAnnotation, seed: number) {
-  const palette = paletteFor(readThemeMode())
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
   path.setAttribute(
     'd',
     underlinePath(annotation.rect.x0, annotation.rect.x1, annotation.rect.y0, seed),
   )
-  path.setAttribute('stroke', palette.inkBlue)
+  path.setAttribute('stroke', 'var(--brown-ink-blue)')
   path.setAttribute('fill', 'none')
   svg.appendChild(path)
 
@@ -37,7 +52,7 @@ function drawAnnotation(svg: SVGSVGElement, annotation: RenderableAnnotation, se
   text.setAttribute('x', String(annotation.rect.x0))
   text.setAttribute('y', String(annotation.rect.y0 + 12))
   text.setAttribute('font-family', 'Caveat, cursive')
-  text.setAttribute('fill', palette.ink)
+  text.setAttribute('fill', 'var(--brown-ink)')
   text.textContent = annotation.note
   svg.appendChild(text)
 }
@@ -65,6 +80,16 @@ async function runPipelineFor(response: HTMLElement) {
   if (diagram) drawDiagram(overlay, diagram, notes.length)
 }
 
+async function runPipelineForSelected(responses: Element[]) {
+  for (const response of responses) {
+    try {
+      await runPipelineFor(response as HTMLElement)
+    } catch (err) {
+      console.warn('[Brown] failed to annotate response', response, err)
+    }
+  }
+}
+
 function mount() {
   const host = document.createElement('div')
   host.id = 'brown-root'
@@ -89,23 +114,27 @@ function mount() {
           checkboxes.hide()
           petState = 'busy'
           render()
-          const selected = checkboxes.getSelected()
-          for (const response of selected) {
-            await runPipelineFor(response as HTMLElement)
-          }
-          petState = 'settled'
-          render()
-          setTimeout(() => {
-            petState = 'idle'
+          try {
+            await runPipelineForSelected(checkboxes.getSelected())
+          } finally {
+            petState = 'settled'
             render()
-          }, 1500)
+            setTimeout(() => {
+              petState = 'idle'
+              render()
+            }, 1500)
+          }
         }}
       />,
     )
   }
 
+  applyPaletteVars(readThemeMode())
   render()
-  watchThemeMode(document.documentElement, () => render())
+  watchThemeMode(document.documentElement, () => {
+    applyPaletteVars(readThemeMode())
+    render()
+  })
 }
 
 mount()
