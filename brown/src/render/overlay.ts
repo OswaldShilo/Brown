@@ -6,6 +6,11 @@ export function createOverlaySvg(container: HTMLElement): SVGSVGElement {
   svg.style.width = '100%'
   svg.style.height = `${container.scrollHeight}px`
   svg.style.pointerEvents = 'none'
+  // Margin ink is placed outside [0, container width] (left margin is
+  // negative-x, right margin starts past the container's own width). A
+  // non-root <svg> defaults to overflow:hidden in every browser, which would
+  // silently clip all of it — this override is required, not cosmetic.
+  svg.style.overflow = 'visible'
   if (!container.style.position) container.style.position = 'relative'
   container.appendChild(svg)
   return svg

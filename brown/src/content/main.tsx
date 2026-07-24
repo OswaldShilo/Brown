@@ -38,16 +38,31 @@ function marginZonesFor(container: HTMLElement): { left: Rect; right: Rect } {
   }
 }
 
-function drawAnnotation(svg: SVGSVGElement, annotation: RenderableAnnotation, seed: number) {
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  path.setAttribute(
+function drawAnnotation(
+  svg: SVGSVGElement,
+  annotation: RenderableAnnotation,
+  containerRect: DOMRect,
+  seed: number,
+) {
+  // Highlight the actual quoted text in the response body — anchored via the
+  // resolved Range, converted from viewport-relative to the same
+  // container-relative frame the overlay SVG and margin rects use.
+  const quoteRect = annotation.range.getBoundingClientRect()
+  const underline = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  underline.setAttribute(
     'd',
-    underlinePath(annotation.rect.x0, annotation.rect.x1, annotation.rect.y0, seed),
+    underlinePath(
+      quoteRect.left - containerRect.left,
+      quoteRect.right - containerRect.left,
+      quoteRect.bottom - containerRect.top,
+      seed,
+    ),
   )
-  path.setAttribute('stroke', 'var(--brown-ink-blue)')
-  path.setAttribute('fill', 'none')
-  svg.appendChild(path)
+  underline.setAttribute('stroke', 'var(--brown-ink-blue)')
+  underline.setAttribute('fill', 'none')
+  svg.appendChild(underline)
 
+  // Handwritten note text, placed in the margin by Margins/pipeline.ts.
   const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
   text.setAttribute('x', String(annotation.rect.x0))
   text.setAttribute('y', String(annotation.rect.y0 + 12))
@@ -76,7 +91,8 @@ async function runPipelineFor(response: HTMLElement) {
   const zones = marginZonesFor(response)
   const { notes, diagram } = await annotateResponse(response, zones, apiKey)
   const overlay = createOverlaySvg(response)
-  notes.forEach((a, i) => drawAnnotation(overlay, a, i))
+  const containerRect = response.getBoundingClientRect()
+  notes.forEach((a, i) => drawAnnotation(overlay, a, containerRect, i))
   if (diagram) drawDiagram(overlay, diagram, notes.length)
 }
 

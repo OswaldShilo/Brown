@@ -61,6 +61,13 @@ export async function annotateResponse(
   const margins = new Margins(zones)
   const placed: RenderableAnnotation[] = []
 
+  // Margins/zones and the overlay SVG (created later, positioned absolute
+  // within `container`) are both in container-relative coordinates, but
+  // Range/Element.getBoundingClientRect() always return viewport-relative
+  // ones — anchoring against the raw viewport value would silently offset
+  // every note by however far the container sits from the viewport top.
+  const containerTop = container.getBoundingClientRect?.()?.top ?? 0
+
   for (const note of result.notes) {
     try {
       const range = resolveQuote(container, { exact: note.quote })
@@ -72,7 +79,7 @@ export async function annotateResponse(
       // which does not implement it on Range at all (only on Element). Falling
       // back to 0 matches the existing failure-isolation philosophy: never let
       // a positioning quirk crash or unnecessarily drop an annotation.
-      const anchorY = range.getBoundingClientRect?.()?.top ?? 0
+      const anchorY = (range.getBoundingClientRect?.()?.top ?? 0) - containerTop
       const height = estimateHeight(note.note)
       const placement = margins.place(anchorY, height)
       if (!placement) continue // silent drop: no room in either margin
