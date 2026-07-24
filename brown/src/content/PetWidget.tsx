@@ -49,12 +49,13 @@ export function BrownPet({ state, onFirstTap, onSecondTap }: BrownPetProps) {
   }, [tapped, onFirstTap, onSecondTap])
 
   return (
-    <div style={{ zIndex: 2147483647, cursor: 'pointer' }} onClick={handleClick}>
+    <div style={{ cursor: 'pointer' }} onClick={handleClick}>
       <CodexPetWidget
         src={SPRITESHEET_URL}
         atlas={codexPetAtlas}
         animation={pet.animation}
         pin={pet.pin}
+        zIndex={2147483647}
       />
     </div>
   )
