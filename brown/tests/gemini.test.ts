@@ -49,4 +49,30 @@ describe('annotateWithGemini', () => {
     const fetchImpl = mockFetch({}, false, 429)
     await expect(annotateWithGemini('x', [], 'test-key', fetchImpl)).rejects.toThrow('429')
   })
+
+  it('throws an informative error when the response JSON is malformed', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'not valid json at all' }] } }],
+      }),
+    })) as unknown as typeof fetch
+    await expect(annotateWithGemini('x', [], 'test-key', fetchImpl)).rejects.toThrow(
+      'Gemini response was not valid JSON',
+    )
+  })
+
+  it('throws an informative error when res.json() fails', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected token')
+      },
+    })) as unknown as typeof fetch
+    await expect(annotateWithGemini('x', [], 'test-key', fetchImpl)).rejects.toThrow(
+      'Gemini response was not valid JSON',
+    )
+  })
 })

@@ -96,11 +96,24 @@ export async function annotateWithGemini(
     throw new Error(`Gemini request failed: ${res.status}`)
   }
 
-  const body = await res.json()
+  let body: any
+  try {
+    body = await res.json()
+  } catch (e) {
+    throw new Error(`Gemini response was not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text
   if (typeof text !== 'string') {
     throw new Error('Gemini response missing text payload')
   }
 
-  return sanitize(JSON.parse(text))
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (e) {
+    throw new Error(`Gemini response was not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  return sanitize(parsed)
 }

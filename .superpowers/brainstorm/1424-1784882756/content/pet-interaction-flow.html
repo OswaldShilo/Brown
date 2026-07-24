@@ -1,0 +1,70 @@
+<h2>The pet-driven interaction flow</h2>
+<p class="subtitle">Three states in sequence: idle pet on the page → tap reveals checkboxes on responses → tap pet again to confirm and run. Click the pet position you'd want at the bottom.</p>
+
+<style>
+  .page-mock { position:relative; background:var(--card-bg,#161616); border-radius:12px; padding:16px; min-height:280px; overflow:hidden; }
+  .msg { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:10px 14px; font-size:12.5px; line-height:1.5; margin-bottom:10px; position:relative; transition:padding-left .15s; }
+  .msg.checkable { padding-left:34px; }
+  .chk { position:absolute; left:10px; top:12px; width:16px; height:16px; border-radius:4px; border:1.5px solid #8a5a2f; }
+  .chk.on { background:#8a5a2f; }
+  .pet { position:absolute; width:46px; height:46px; border-radius:50%; background:#7a4a26; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 2px 10px rgba(0,0,0,.4); cursor:pointer; }
+  .pet.br { right:14px; bottom:14px; }
+  .stage-label { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; opacity:.6; margin-bottom:6px; }
+  .badge { font-size:9.5px; padding:2px 6px; border-radius:10px; background:rgba(255,196,0,.18); border:1px solid rgba(255,196,0,.4); margin-left:6px; }
+</style>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">1 · Idle</div>
+    <div class="mockup-body">
+      <div class="page-mock">
+        <div class="msg">Claude's response about queue architecture and caching...</div>
+        <div class="msg">Second response discussing retry logic...</div>
+        <div class="pet br">🐻</div>
+      </div>
+      <p class="stage-label" style="margin-top:8px">pet look-around animation, waiting</p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">2 · Tapped once — checkboxes appear</div>
+    <div class="mockup-body">
+      <div class="page-mock">
+        <div class="msg checkable"><span class="chk on"></span>Claude's response about queue architecture and caching...</div>
+        <div class="msg checkable"><span class="chk"></span>Second response discussing retry logic...</div>
+        <div class="pet br">🐻</div>
+      </div>
+      <p class="stage-label" style="margin-top:8px">first response checked<span class="badge">1 selected</span></p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">3 · Tapped pet again — confirmed</div>
+    <div class="mockup-body">
+      <div class="page-mock">
+        <div class="msg"><span style="background:rgba(255,196,0,.28);border-radius:3px">Claude's response about queue architecture</span> and caching...</div>
+        <div class="msg">Second response discussing retry logic...</div>
+        <div class="pet br">✨</div>
+      </div>
+      <p class="stage-label" style="margin-top:8px">pet busy-state while Gemini call runs, then settles when notes are ready</p>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">Where should the pet live on the page?</h3>
+<div class="options">
+  <div class="option" data-choice="fixed-corner" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Fixed corner (bottom-right)</h3>
+      <p>Always same spot, never in the way, simplest to build and reason about</p>
+    </div>
+  </div>
+  <div class="option" data-choice="draggable" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Draggable + pinnable</h3>
+      <p>codex-pets-react's PetWidget supports this out of the box — user can move it out of the way of a specific response, position persists</p>
+    </div>
+  </div>
+</div>
