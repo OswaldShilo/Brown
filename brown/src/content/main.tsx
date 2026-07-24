@@ -1,9 +1,111 @@
+// brown/src/content/main.tsx
+import { createRoot } from 'react-dom/client'
+import { findAssistantResponses } from './selectors'
+import { attachCheckboxes } from './ResponseCheckboxes'
+import { BrownPet, type BrownPetState } from './PetWidget'
+import { readThemeMode, paletteFor, watchThemeMode } from './theme'
+import { createOverlaySvg } from '../render/overlay'
+import { underlinePath } from '../render/strokes'
+import { layoutChain, renderChainDiagram } from '../render/diagram'
+import { annotateResponse, type RenderableAnnotation, type RenderableDiagram } from '../annotate/pipeline'
+import { getApiKey } from '../options/storage'
+import type { Rect } from '../annotate/margins'
+
+const MARGIN_WIDTH = 160
+
+function marginZonesFor(container: HTMLElement): { left: Rect; right: Rect } {
+  const width = container.clientWidth
+  const height = container.scrollHeight
+  return {
+    left: { x0: -MARGIN_WIDTH, y0: 0, x1: 0, y1: height },
+    right: { x0: width, y0: 0, x1: width + MARGIN_WIDTH, y1: height },
+  }
+}
+
+function drawAnnotation(svg: SVGSVGElement, annotation: RenderableAnnotation, seed: number) {
+  const palette = paletteFor(readThemeMode())
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute(
+    'd',
+    underlinePath(annotation.rect.x0, annotation.rect.x1, annotation.rect.y0, seed),
+  )
+  path.setAttribute('stroke', palette.inkBlue)
+  path.setAttribute('fill', 'none')
+  svg.appendChild(path)
+
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+  text.setAttribute('x', String(annotation.rect.x0))
+  text.setAttribute('y', String(annotation.rect.y0 + 12))
+  text.setAttribute('font-family', 'Caveat, cursive')
+  text.setAttribute('fill', palette.ink)
+  text.textContent = annotation.note
+  svg.appendChild(text)
+}
+
+function drawDiagram(svg: SVGSVGElement, diagram: RenderableDiagram, seed: number) {
+  const layout = layoutChain(diagram.labels, {
+    x: diagram.rect.x0,
+    y: diagram.rect.y0,
+    width: diagram.rect.x1 - diagram.rect.x0,
+    height: diagram.rect.y1 - diagram.rect.y0,
+  })
+  renderChainDiagram(svg, diagram.labels, layout, seed)
+}
+
+async function runPipelineFor(response: HTMLElement) {
+  const apiKey = await getApiKey()
+  if (!apiKey) {
+    console.warn('[Brown] no Gemini API key set — open the extension options page')
+    return
+  }
+  const zones = marginZonesFor(response)
+  const { notes, diagram } = await annotateResponse(response, zones, apiKey)
+  const overlay = createOverlaySvg(response)
+  notes.forEach((a, i) => drawAnnotation(overlay, a, i))
+  if (diagram) drawDiagram(overlay, diagram, notes.length)
+}
+
 function mount() {
   const host = document.createElement('div')
   host.id = 'brown-root'
   const shadow = host.attachShadow({ mode: 'open' })
   document.body.appendChild(host)
-  return shadow
+
+  const mountPoint = document.createElement('div')
+  shadow.appendChild(mountPoint)
+
+  const responses = findAssistantResponses()
+  const checkboxes = attachCheckboxes(responses)
+
+  let petState: BrownPetState = 'idle'
+  const root = createRoot(mountPoint)
+
+  function render() {
+    root.render(
+      <BrownPet
+        state={petState}
+        onFirstTap={() => checkboxes.show()}
+        onSecondTap={async () => {
+          checkboxes.hide()
+          petState = 'busy'
+          render()
+          const selected = checkboxes.getSelected()
+          for (const response of selected) {
+            await runPipelineFor(response as HTMLElement)
+          }
+          petState = 'settled'
+          render()
+          setTimeout(() => {
+            petState = 'idle'
+            render()
+          }, 1500)
+        }}
+      />,
+    )
+  }
+
+  render()
+  watchThemeMode(document.documentElement, () => render())
 }
 
 mount()
