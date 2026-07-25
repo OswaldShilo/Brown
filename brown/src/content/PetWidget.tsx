@@ -54,7 +54,13 @@ export function BrownPet({ state, onFirstTap, onSecondTap }: BrownPetProps) {
 
   return (
     <div style={{ cursor: 'pointer' }} onClick={handleClick}>
+      {/* Keyed by animation name so React fully remounts the sprite on every
+          transition instead of relying on the library's internal reset
+          effect, which runs after the row (from the new animation) is
+          already painted alongside the stale frame column (from the old
+          one) — a one-frame flash of a mismatched pose on every switch. */}
       <CodexPetWidget
+        key={pet.animation.name}
         src={SPRITESHEET_URL}
         atlas={codexPetAtlas}
         animation={pet.animation}
