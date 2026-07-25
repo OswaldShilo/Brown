@@ -30,12 +30,16 @@ const SPRITESHEET_URL = chrome.runtime.getURL('public/pets/yuan/spritesheet.webp
 export function BrownPet({ state, onFirstTap, onSecondTap }: BrownPetProps) {
   const [tapped, setTapped] = useState(false)
   const { pet, petDispatch } = usePetController<CodexPetAnimationName>({
-    initialState: { animation: { name: 'idle', mode: 'loop' }, pin: 'bottom-right' },
+    initialState: { animation: { name: 'idle', mode: 'once' }, pin: 'bottom-right' },
     defaultAnimation: 'idle',
   })
 
+  // 'animation.set' always forces mode: 'loop' in codex-pets-react's reducer —
+  // there is no way to get a single play-through from it. 'animation.play' with
+  // mode: 'once' plays the cycle exactly once and then SpriteAnimator freezes
+  // on the last frame on its own (no further dispatch needed to hold it there).
   useEffect(() => {
-    petDispatch({ type: 'animation.set', animation: ANIMATION_BY_STATE[state] })
+    petDispatch({ type: 'animation.play', animation: ANIMATION_BY_STATE[state], mode: 'once' })
   }, [state, petDispatch])
 
   const handleClick = useCallback(() => {
