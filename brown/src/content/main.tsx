@@ -107,6 +107,12 @@ async function runPipelineForSelected(responses: Element[]) {
 }
 
 function mount() {
+  // A page-level reinjection (extension reload, dev iteration) doesn't tear
+  // down DOM nodes a prior script instance appended — only a full page
+  // refresh does. Without this, each reinjection stacks another pet/overlay
+  // host on top of the last one still sitting in the page.
+  document.getElementById('brown-root')?.remove()
+
   const host = document.createElement('div')
   host.id = 'brown-root'
   const shadow = host.attachShadow({ mode: 'open' })
