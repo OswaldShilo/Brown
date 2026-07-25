@@ -106,12 +106,24 @@ async function runPipelineForSelected(responses: Element[]) {
   }
 }
 
+// A page-level reinjection (extension reload, dev iteration) doesn't tear
+// down a prior script instance's DOM, React root, or observers on its own —
+// only a full page refresh does. Removing just the DOM node (as an earlier
+// version of this function did) still leaves the old instance's React root
+// and its theme MutationObserver alive and running against a detached tree,
+// and does nothing to prevent it from having rendered its own visible pet
+// before the new instance runs. Tracking a real teardown function on
+// `window` (shared by every isolated-world reinjection of this same content
+// script within the page) makes each mount() call fully tear down whatever
+// came before it, guaranteeing exactly one live pet.
+declare global {
+  interface Window {
+    __brownUnmount?: () => void
+  }
+}
+
 function mount() {
-  // A page-level reinjection (extension reload, dev iteration) doesn't tear
-  // down DOM nodes a prior script instance appended — only a full page
-  // refresh does. Without this, each reinjection stacks another pet/overlay
-  // host on top of the last one still sitting in the page.
-  document.getElementById('brown-root')?.remove()
+  window.__brownUnmount?.()
 
   const host = document.createElement('div')
   host.id = 'brown-root'
@@ -153,10 +165,16 @@ function mount() {
 
   applyPaletteVars(readThemeMode())
   render()
-  watchThemeMode(document.documentElement, () => {
+  const stopWatchingTheme = watchThemeMode(document.documentElement, () => {
     applyPaletteVars(readThemeMode())
     render()
   })
+
+  window.__brownUnmount = () => {
+    stopWatchingTheme()
+    root.unmount()
+    host.remove()
+  }
 }
 
 mount()
