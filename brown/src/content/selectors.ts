@@ -1,12 +1,14 @@
 // brown/src/content/selectors.ts
 //
 // IMPORTANT: Claude.ai's DOM structure is not publicly documented and can
-// change without notice. Before Task 15's end-to-end test, open
-// https://claude.ai in Chrome, open DevTools, inspect one assistant
-// response's rendered container, and update this selector to match a
-// stable ancestor element that wraps exactly one assistant turn.
-export const ASSISTANT_RESPONSE_SELECTOR = '[data-testid="conversation-turn"][data-is-author="assistant"]'
-
+// change without notice. `[data-testid="conversation-turn"]` no longer
+// exists on the page (confirmed via live DevTools console — 0 matches).
+// `.font-claude-response-body` is assistant-only (only Claude's rendered
+// markdown gets this class); `[role="article"]` wraps a full turn but
+// matches both user and assistant turns, so it's only used as the
+// ancestor scope once we've already found an assistant-only body inside it.
 export function findAssistantResponses(root: ParentNode = document): Element[] {
-  return Array.from(root.querySelectorAll(ASSISTANT_RESPONSE_SELECTOR))
+  return Array.from(root.querySelectorAll('.font-claude-response-body'))
+    .map(body => body.closest('[role="article"]'))
+    .filter((el): el is Element => el !== null)
 }

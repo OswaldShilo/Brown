@@ -3,33 +3,49 @@ export interface CheckboxController {
   show(): void
   hide(): void
   getSelected(): Element[]
+  addResponses(newResponses: Element[]): void
   destroy(): void
 }
 
 export function attachCheckboxes(responses: Element[]): CheckboxController {
-  const boxes: HTMLInputElement[] = responses.map(response => {
+  let visible = false
+  const entries: { response: Element; box: HTMLInputElement }[] = []
+
+  function attach(response: Element) {
     const box = document.createElement('input')
     box.type = 'checkbox'
     box.className = 'brown-response-checkbox'
-    box.style.display = 'none'
+    box.style.display = visible ? '' : 'none'
     response.prepend(box)
-    return box
-  })
+    entries.push({ response, box })
+  }
+
+  responses.forEach(attach)
 
   return {
     show() {
-      boxes.forEach(b => (b.style.display = ''))
+      visible = true
+      entries.forEach(({ box }) => (box.style.display = ''))
     },
     hide() {
-      boxes.forEach(b => (b.style.display = 'none'))
+      visible = false
+      entries.forEach(({ box }) => (box.style.display = 'none'))
     },
     getSelected() {
-      return boxes
-        .map((b, i) => (b.checked ? responses[i] : null))
-        .filter((r): r is Element => r !== null)
+      return entries.filter(({ box }) => box.checked).map(({ response }) => response)
+    },
+    // Claude.ai renders responses asynchronously and never re-runs the content
+    // script on client-side navigation between chats, so the initial
+    // findAssistantResponses() snapshot passed to attachCheckboxes() often
+    // misses responses that appear (or stream in) after mount(). Call this
+    // from a MutationObserver to pick up newly rendered responses.
+    addResponses(newResponses) {
+      const known = new Set(entries.map(e => e.response))
+      newResponses.filter(r => !known.has(r)).forEach(attach)
     },
     destroy() {
-      boxes.forEach(b => b.remove())
+      entries.forEach(({ box }) => box.remove())
+      entries.length = 0
     },
   }
 }

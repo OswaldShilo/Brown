@@ -106,7 +106,25 @@ async function runPipelineForSelected(responses: Element[]) {
   }
 }
 
+// A page-level reinjection (extension reload, dev iteration) doesn't tear
+// down a prior script instance's DOM, React root, or observers on its own —
+// only a full page refresh does. Removing just the DOM node (as an earlier
+// version of this function did) still leaves the old instance's React root
+// and its theme MutationObserver alive and running against a detached tree,
+// and does nothing to prevent it from having rendered its own visible pet
+// before the new instance runs. Tracking a real teardown function on
+// `window` (shared by every isolated-world reinjection of this same content
+// script within the page) makes each mount() call fully tear down whatever
+// came before it, guaranteeing exactly one live pet.
+declare global {
+  interface Window {
+    __brownUnmount?: () => void
+  }
+}
+
 function mount() {
+  window.__brownUnmount?.()
+
   const host = document.createElement('div')
   host.id = 'brown-root'
   const shadow = host.attachShadow({ mode: 'open' })
@@ -117,6 +135,15 @@ function mount() {
 
   const responses = findAssistantResponses()
   const checkboxes = attachCheckboxes(responses)
+
+  // Claude.ai renders responses asynchronously after the page goes idle,
+  // and switching chats is a client-side navigation that never re-runs
+  // this content script — so the snapshot above is frequently empty or
+  // stale by the time the user actually taps the pet. Keep it live.
+  const responseObserver = new MutationObserver(() => {
+    checkboxes.addResponses(findAssistantResponses())
+  })
+  responseObserver.observe(document.body, { childList: true, subtree: true })
 
   let petState: BrownPetState = 'idle'
   const root = createRoot(mountPoint)
@@ -147,10 +174,17 @@ function mount() {
 
   applyPaletteVars(readThemeMode())
   render()
-  watchThemeMode(document.documentElement, () => {
+  const stopWatchingTheme = watchThemeMode(document.documentElement, () => {
     applyPaletteVars(readThemeMode())
     render()
   })
+
+  window.__brownUnmount = () => {
+    responseObserver.disconnect()
+    stopWatchingTheme()
+    root.unmount()
+    host.remove()
+  }
 }
 
 mount()
