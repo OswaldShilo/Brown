@@ -37,4 +37,32 @@ describe('attachCheckboxes', () => {
     controller.destroy()
     expect(document.querySelectorAll('.brown-response-checkbox').length).toBe(0)
   })
+
+  it('attaches a checkbox to responses added later via addResponses()', () => {
+    const responses = makeResponses(1)
+    const controller = attachCheckboxes(responses)
+    const [lateResponse] = makeResponses(1)
+    controller.addResponses([lateResponse])
+    expect(document.querySelectorAll('.brown-response-checkbox').length).toBe(2)
+    controller.destroy()
+  })
+
+  it('shows checkboxes added later at the current visibility, not always hidden', () => {
+    const responses = makeResponses(1)
+    const controller = attachCheckboxes(responses)
+    controller.show()
+    const [lateResponse] = makeResponses(1)
+    controller.addResponses([lateResponse])
+    const boxes = document.querySelectorAll<HTMLInputElement>('.brown-response-checkbox')
+    expect(boxes[1].style.display).toBe('')
+    controller.destroy()
+  })
+
+  it('does not re-attach a checkbox to a response already known', () => {
+    const responses = makeResponses(1)
+    const controller = attachCheckboxes(responses)
+    controller.addResponses(responses)
+    expect(document.querySelectorAll('.brown-response-checkbox').length).toBe(1)
+    controller.destroy()
+  })
 })

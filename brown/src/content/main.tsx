@@ -136,6 +136,15 @@ function mount() {
   const responses = findAssistantResponses()
   const checkboxes = attachCheckboxes(responses)
 
+  // Claude.ai renders responses asynchronously after the page goes idle,
+  // and switching chats is a client-side navigation that never re-runs
+  // this content script — so the snapshot above is frequently empty or
+  // stale by the time the user actually taps the pet. Keep it live.
+  const responseObserver = new MutationObserver(() => {
+    checkboxes.addResponses(findAssistantResponses())
+  })
+  responseObserver.observe(document.body, { childList: true, subtree: true })
+
   let petState: BrownPetState = 'idle'
   const root = createRoot(mountPoint)
 
@@ -171,6 +180,7 @@ function mount() {
   })
 
   window.__brownUnmount = () => {
+    responseObserver.disconnect()
     stopWatchingTheme()
     root.unmount()
     host.remove()
